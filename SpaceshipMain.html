@@ -1,0 +1,884 @@
+	<!DOCTYPE html>
+	<head>
+		<title>Starwars - The Force Awakens</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				color: #000;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+				font-weight: bold;
+
+				background-color: #fff;
+				margin: 0px;
+				overflow: hidden;
+			}
+
+			#info {
+				color:#000;
+				position: absolute;
+				top: 0px; width: 100%;
+				padding: 5px;
+
+			}
+
+			a {
+				color: red;
+			}
+
+			#ShieldProgress {
+				background: #333;
+				color : orange;
+				border-radius: 10px;
+				height: 20px;
+				width: 100%;
+				padding: 3px;
+				display: block;
+				font-weight: bold; 
+				color: #fff;
+				font-size:20px
+			}
+
+			progress {
+				width: 400px;
+				height: 14px;
+				display: block;
+				/* Important Thing */
+				-webkit-appearance: none;
+				border: none;
+			}
+
+			/* All good till now. Now we'll style the background */
+			progress::-webkit-progress-bar {
+				background: black;
+				border-radius: 50px;
+				padding: 2px;
+				box-shadow: 0 1px 0px 0 rgba(255, 255, 255, 0.2);
+			}
+
+			/* Now the value part */
+			progress::-webkit-progress-value {
+				border-radius: 50px;
+				box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.4);
+				background:
+				-webkit-linear-gradient(45deg, transparent, transparent 33%, rgba(0, 0, 0, 0.1) 33%, rgba(0, 0, 0, 0.1) 66%, transparent 66%),
+				-webkit-linear-gradient(top, rgba(255, 255, 255, 0.25), rgba(0, 0, 0, 0.2)),
+				-webkit-linear-gradient(left, #ba7448, #c4672d);
+				
+				/* Looks great, now animating it */
+				background-size: 25px 14px, 100% 100%, 100% 100%;
+				-webkit-animation: move 5s linear 0 infinite;
+			}
+
+			/* That's it! Now let's try creating a new stripe pattern and animate it using animation and keyframes properties  */
+
+			@-webkit-keyframes move {
+				0% {background-position: 0px 0px, 0 0, 0 0}
+				100% {background-position: -100px 0px, 0 0, 0 0}
+			}
+
+		</style>
+	</head>
+	<link rel="stylesheet" type="text/css" href="http://visualidiot.com/files/real-world.css">
+	<script src='vendor/three.js/build/three.js'></script>
+	<script src="vendor/require.js/require.js"></script>
+	<script src="vendor/three.js/examples/js/Detector.js"></script>
+	<script src="vendor/threex.windowresize.js"></script>
+	<script src="vendor/three.js/examples/js/controls/OrbitControls.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r66/three.js"></script>
+	<script src="https://js.leapmotion.com/leap-0.6.4.min.js"></script>
+	<script src="https://js.leapmotion.com/leap-plugins-0.1.6.1.js"></script>
+	<script src="https://js.leapmotion.com/leap.rigged-hand-0.1.3.min.js"></script>
+
+	<body style='margin: 0px; background-color: #bbbbbb; overflow: hidden;'>
+		<progress id = "ShieldProgress" value="100" max="100" style="position: absolute; bottom: 0; left: 0.5em; width: 100%; padding: 4px; color: #fff; font-weight: bold;font-size:20px" ></progress>
+		<div class="displayscore" style="position: absolute; top: 0; left: 0.5em; width: 120px; font-weight: bold; color: #fff;font-size:20px">
+			<p>Republic Credits:<span class="score"></span><p>
+			</div>
+			<div class="displaystatus" style="position: absolute; top: 0; left: 3.0em; width: 100%; font-weight: bold; color: #fff;font-size:20px">
+				<p><span class="blink"><span class="status">Reach the Rebel Base before the Empire Star Destroyer can catch you !!</span></span><p>
+				</div>
+
+				<div class="displaylevel" style="position: absolute; top: 0; right: 0.5em; width: 120px; padding: 4px; color: #fff; font-weight: bold;font-size:20px">
+					<p>Level:<span class="level"></span><p>
+					</div>
+					<div class="displayshield" style="position: absolute; bottom: 0; left: 0.5em; width: 120px; padding: 4px; color: #fff; font-weight: bold;font-size:20px">
+						<p>Shield:<span class="shield"></span><p>
+						</div>
+						<script>
+							require([ 'bower_components/threex.spaceships/package.require.js'
+								, 'vendor/three.js/examples/js/loaders/OBJMTLLoader.js'
+								, 'vendor/three.js/examples/js/loaders/OBJLoader.js'
+								, 'vendor/three.js/examples/js/loaders/MTLLoader.js'
+								, 'bower_components/threex.keyboardstate/package.require.js'
+								, 'bower_components/threex.planets/package.require.js'
+								, 'bower_components/webaudiox/build/webaudiox.js'
+								], function(){
+		//Check if WebGL is enalbed
+		if(!Detector.webgl ){
+			Detector.addGetWebGLMessage();
+			throw 'WebGL Not Available'
+		} 
+		var self = this;
+
+		//Setup webgl renderer full page
+		var renderer	= new THREE.WebGLRenderer();
+		renderer.setSize( window.innerWidth, window.innerHeight );
+		document.body.appendChild( renderer.domElement );
+
+		// setup a scene and camera
+		var scene	= new THREE.Scene();
+		var camera	= new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.01, 1000);
+		camera.position.z = 10;
+
+		// declare the rendering loop
+		var onRenderFcts= [];
+
+		// handle window resize events
+		var winResize	= new THREEx.WindowResize(renderer, camera)
+
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////default 3 points lightning////////////////////////////////////////////////
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
+		var ambientLight= new THREE.AmbientLight( 0x020202 )
+		scene.add( ambientLight)
+		var frontLight	= new THREE.DirectionalLight('white', 1)
+		frontLight.position.set(0.5, 0.5, 2)
+		scene.add( frontLight )
+		var backLight	= new THREE.DirectionalLight('white', 0.75)
+		backLight.position.set(-0.5, -0.5, -2)
+		scene.add( backLight )		
+		
+		//////////////////////////////////////////////////////////////////////////////////////////////////
+		/////////////////////////////Add Star Sphere//////////////////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////////////////////
+		var geometry  = new THREE.SphereGeometry(90, 32, 32)
+		var url   = 'bower_components/threex.planets/examples/images/galaxy_starfield.png'
+		var material  = new THREE.MeshBasicMaterial({
+			map : THREE.ImageUtils.loadTexture(url),
+			side  : THREE.BackSide
+		})
+		var starSphere  = new THREE.Mesh(geometry, material)
+		scene.add(starSphere)
+		
+		onRenderFcts.push(function(delta, now){
+			starSphere.rotation.y  += 1/5 * delta
+		})
+
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////Strategy Pattern////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////
+
+	var StarWar = function() {
+		this.level = "";
+	};
+
+	StarWar.prototype = {
+		setStrategy: function(level) {
+			this.level = level;
+		},
+		getStrategySpeed: function() {
+			return this.level.values();
+		}
+	};
+
+	var Level1 = function() {
+		this.values = function() {
+	// calculations...
+	return {'speed':1,'count':3};
+}
+};
+
+var Level2 = function() {
+	this.values = function() {
+	        // calculations...
+	        return {'speed':2,'count':4};
+	    }
+	};
+
+	var Level3 = function() {
+		this.values = function() {
+	        // calculations...
+	        return {'speed':3,'count':5};
+	    }
+	};
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////Strategy pattern end////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////
+
+	//////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////Observer Pattern//////////////////////////////////////////		
+	//////////////////////////////////////////////////////////////////////////////////////////
+	gamepoints = 0;
+	gameshield = 100;
+	document.querySelector('.displayshield .shield').innerHTML = gameshield;
+	document.querySelector('.displayscore .score').innerHTML = gamepoints;
+	gamelevel = 1;
+	document.querySelector('.displaylevel .level').innerHTML = gamelevel;
+	popurl = "";
+	
+	var publisher = {
+		subscribers: {
+			any: [] // event type: subscribers
+		},
+		subscribe: function(type, fn, context) {
+			type = type || 'any';
+			fn = typeof fn === 'function' ? fn : context[fn];
+			if (typeof this.subscribers[type] === "undefined") {
+				this.subscribers[type] = [];
+			}
+			this.subscribers[type].push({ fn: fn, context: context || this });
+		},
+		unsubscribe: function(type, fn, context) {
+			this.visitSubscribers('unsubscribe', type, fn, context);
+		},
+		fire: function(type, publication) {
+			this.visitSubscribers('publish', type, publication);
+		},
+		visitSubscribers: function(action, type, arg, context) {
+			var pubtype = type || 'any',
+			subscribers = this.subscribers[pubtype],
+			i,
+			max = subscribers ? subscribers.length : 0;
+
+			for (i = 0; i < max; i += 1) {
+				if (action === 'publish') {
+					// Call our observers, passing along arguments
+					subscribers[i].fn.call(subscribers[i].context, arg);
+				} else {
+					if (subscribers[i].fn === arg && subscribers[i].context === context) {
+						subscribers.splice(i, 1);
+					}
+				}
+			}
+		}
+	};
+
+	function handleScores(hitvalue) { 
+		if(hitvalue > 0) {
+			gamepoints = gamepoints + hitvalue;
+			document.querySelector('.displayscore .score').innerHTML = gamepoints;
+		}
+	}
+
+	function handleShield(hitvalue) { 
+		if(hitvalue < 0){
+			gameshield = gameshield + hitvalue;
+			document.querySelector('.displayshield .shield').innerHTML = gameshield;
+			document.getElementById("ShieldProgress").value=gameshield;
+		}
+		if(gameshield === 0){
+			alert("The rebel ship was destroyed in the Asteroid Field!!");
+			location.href = "/index.html";
+		}
+	}
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////////Observer Pattern End////////////////////////////////////////////////////		
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////Handing Levels///////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	var level1 = new Level1();
+	var starWar = new StarWar();
+	starWar.setStrategy(level1);
+
+	var gameLevelSpeed = starWar.getStrategySpeed().speed;
+	var gamelevelCount = starWar.getStrategySpeed().count;
+
+
+	function handleLevels() {  
+		switch(gamepoints){
+
+			case 100:
+			if(gamelevel == 1){
+				var level2 = new Level2();
+				//var starWar = new StarWar();
+				starWar.setStrategy(level2);
+				limit = starWar.getStrategySpeed().count;
+				gameLevelSpeed = starWar.getStrategySpeed().speed;
+				//alert("You have reached the first checkpoint on the way to rebal base!!!");
+				gamelevel = gamelevel + 1;
+				document.querySelector('.displaylevel .level').innerHTML = gamelevel;
+				document.querySelector('.displaystatus .blink .status').innerHTML = "You have reached the first checkpoint on the way to rebal base!!!";
+			}
+			break;
+
+			case 200:
+			if(gamelevel == 2){
+				var level3 = new Level3();
+				starWar.setStrategy(level3);
+				limit = starWar.getStrategySpeed().count;
+				gameLevelSpeed = starWar.getStrategySpeed().speed;
+				//alert("Good Going !!! you are almost near the Outer Rim checkpost just a few par secs to go !!!");
+				gamelevel = gamelevel + 1;
+				document.querySelector('.displaylevel .level').innerHTML = gamelevel;
+				document.querySelector('.displaystatus .blink .status').innerHTML ="Good Going !!! you are almost near the Outer Rim checkpost just a few par secs to Rebel base!!!";
+			}
+			break;
+
+			case 300:
+			alert("Congratulations! You Reached the Rebel Base Safely!!!");
+			location.href = "/index.html";
+			break;
+
+			default:
+			break;
+		}	
+	}
+
+
+	publisher.subscribe('publish', handleScores);
+	publisher.subscribe('publish', handleLevels);
+	publisher.subscribe('publish', handleShield);
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////Handing Levels End///////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////Adding Enemeies - Factory Pattern////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	            //Factory Pattern Implemented here 
+	            function Moon(options) {
+
+	            	return THREEx.Planets.createMoon()
+
+	            }
+
+	            function Mars(options) {
+
+	            	return THREEx.Planets.createMars()
+
+	            }
+
+	            function Jupiter(options) {
+
+	            	return THREEx.Planets.createJupiter()
+
+	            }
+
+	            function Saturn(options) {
+
+	            	return THREEx.Planets.createSaturn()
+
+	            }
+
+	            function SaturnRing(options) {
+
+	            	return THREEx.Planets.createSaturnRing()
+
+	            }
+
+	            function UranusRing(options) {
+
+	            	return THREEx.Planets.createUranusRing()
+
+	            }
+	            // A constructor for defining new trucks
+	            function Sun(options) {
+	            	return THREEx.Planets.createSun()
+	            }
+
+
+	            function Alien1(options, callback) {
+	            	THREEx.SpaceShips.loadShuttle01(function(object3d) {
+
+	            		callback(object3d);
+	            	})
+
+	            }
+
+	            // Define a skeleton Enemy factory 
+	            function EnemyFactory() {}
+
+	            // Our default EnemyClass is Moon
+	            EnemyFactory.prototype.EnemyClass = moon;
+
+	            // Our Factory method for creating new enemies instances
+	            EnemyFactory.prototype.createEnemy = function(options, callback) {
+
+	            	switch (options.enemyType) {
+	            		case "moon":
+	            		this.EnemyClass = Moon;
+	            		break;
+	            		case "sun":
+	            		this.EnemyClass = Sun;
+	            		break;
+	            		case "alien1":
+	            		this.EnemyClass = Alien1;
+	            		break;
+	            		case "mars":
+	            		this.EnemyClass = Mars;
+	            		break;
+	            		case "jupiter":
+	            		this.EnemyClass = Jupiter;
+	            		break;
+	            		case "saturn":
+	            		this.EnemyClass = Saturn;
+	            		break;
+	            		case "SaturnRing":
+	            		this.EnemyClass = SaturnRing;
+	            		break;
+	            		case "UranusRing":
+	            		this.EnemyClass = UranusRing;
+	            		break;
+	            	}
+
+	            	return new this.EnemyClass(options, callback);
+
+	            };
+
+	            // Create an instance of our factory that makes Enemies
+	            var enemyFactory = new EnemyFactory();
+
+	            var moon = enemyFactory.createEnemy({
+	            	enemyType: "moon"
+	            });
+
+	            var enemy1 = enemyFactory.createEnemy({
+	            	enemyType: "alien1"
+	            }, function(Object3d) {
+	            	enemy1 = Object3d
+	            });
+
+	            var sun = enemyFactory.createEnemy({
+	            	enemyType: "sun"
+	            });
+
+	            var mars = enemyFactory.createEnemy({
+	            	enemyType: "mars"
+	            });
+
+	            var jupiter = enemyFactory.createEnemy({
+	            	enemyType: "jupiter"
+	            });
+
+	            var saturnRing = enemyFactory.createEnemy({
+	            	enemyType: "saturnRing"
+	            });
+
+	            var uranusRing = enemyFactory.createEnemy({
+	            	enemyType: "uranusRing"
+	            });
+
+	            var enemyList = [];
+	            enemyList.push(moon);
+	            enemyList.push(sun);
+	            enemyList.push(mars);
+	            enemyList.push(jupiter);
+	            enemyList.push(saturnRing);
+	            enemyList.push(uranusRing);
+
+	            var yposition = -2
+	            for (i = 0; i < enemyList.length; i++) {
+	            	if(i==0){
+	            		enemyList[i].name = "shield"
+	            	}
+	            	scene.add(enemyList[i])
+	            	enemyList[i].position.x = 7
+	            	enemyList[i].position.y = yposition++;
+	            	enemyList[i].orignalPosition = yposition - 1;
+	            	enemyList[i].speed = 6;
+	            	enemyList[i].moving = "stop";
+	            	enemyList[i].state = 0;
+	            	enemyList[i].count = 1;
+	            	enemyList[i].maxspeed =gameLevelSpeed*Math.random()+6;
+	            	enemyList[i].startposition =  15;
+	            	enemyList[i].score = 10;
+	            	enemyList[i].damagevalue = 10;
+	            }
+
+	            var limit = gamelevelCount;
+	            var activeEnemyCount = 0;
+
+	            var moveEnemy = function(enemy) {
+	            	onRenderFcts.push(function(delta, now) {
+
+	                    // move the enemies to the left
+	                    enemy.position.x -= enemy.speed * delta;
+
+	                    // make it warp
+	                    if (enemy.position.x < -12) resetEnemy(enemy)
+
+	                })
+	            }
+
+	            var AddEnemyToScene = function() {
+	            	while (activeEnemyCount < limit) {
+	            		var number = Math.floor(Math.random() * enemyList.length)
+
+	            		if (enemyList[number].count === 1) {
+	            			enemyList[number].count = 2;
+	            			if (enemyList[number].state === 0) {
+	            				activeEnemyCount++;
+	            				enemyList[number].state = 1;
+	            				enemyList[number].speed = enemyList[number].maxspeed;
+	            				enemyList[number].moving = "move";
+	            				moveEnemy(enemyList[number]);
+	            			}
+
+
+	            		}
+	            		if (enemyList[number].count === 2) {
+	            			if (enemyList[number].state === 2) {
+	            				if (enemyList[number].moving === "stop"){
+	            					activeEnemyCount++;
+	                            //enemyList[number].state = 0;
+	                            enemyList[number].position.x = enemyList[number].startposition;
+	                            enemyList[number].position.y = enemyList[number].orignalPosition;
+	                            enemyList[number].speed = enemyList[number].maxspeed;
+	                            enemyList[number].moving === "move";
+
+	                        }
+	                    }
+	                }
+	            }
+	        }
+
+
+
+	        onRenderFcts.push(function(delta, now) {
+	        	AddEnemyToScene();
+	        })
+
+	        var resetEnemy = function(enemy) {
+	        	activeEnemyCount--;
+	        	if(activeEnemyCount===limit-1)
+	        		activeEnemyCount=0;
+	        	enemy.position.x = enemy.startposition
+	        	enemy.position.y = enemy.orignalPosition
+	        	enemy.speed = 0;
+	        	enemy.state = 2;
+	        	enemy.count=2;
+	        	enemy.moving = "stop";
+	        }
+
+	            ////Collition Detection for Spaceship. 
+	            onRenderFcts.push(function(delta, now){
+			// only if the spaceship is loaded
+			if( spaceship === null )    return
+			// compute distance between spaceship and the moon
+		for(i=0; i<enemyList.length ; i++){
+			var colldistance = spaceship.position.distanceTo(enemyList[i].position)
+			if(colldistance < 0.5){
+				if(gameshield <= 50)
+					damageShield();
+				publisher.fire('publish',-10); 
+				resetEnemy(enemyList[i]);
+				playExplosionSound();
+				break;
+			}
+		}
+	})
+
+	    //////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////Blaster sound///////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////
+		var context = new AudioContext()
+		var lineOut = new WebAudiox.LineOut(context)
+		lineOut.volume  = 0.2
+
+		var blastersoundBuffer;
+		// load the sound
+		var blastersoundUrl    = 'sounds/StarWarsBlastersoundeffect.mp3'
+		WebAudiox.loadBuffer(context, blastersoundUrl, function(buffer){
+			blastersoundBuffer = buffer
+		})
+
+		// setup a play function
+		function playBlasterSound(){
+			if( !blastersoundBuffer )  return
+				var source  = context.createBufferSource()
+			source.buffer   = blastersoundBuffer
+			source.connect(lineOut.destination)
+			source.start(0)
+			return source
+		}
+
+
+		//////////////////////////////////////////////////////////////////////////////////
+		///////////////////////////explosion sound////////////////////////////////////////
+		//////////////////////////////////////////////////////////////////////////////////
+		var context = new AudioContext()
+		var lineOut = new WebAudiox.LineOut(context)
+		lineOut.volume  = 0.2
+
+		var soundBuffer;
+		// load the sound
+		var soundUrl    = 'sounds/102720__sarge4267__explosion.wav'
+		WebAudiox.loadBuffer(context, soundUrl, function(buffer){
+			soundBuffer = buffer
+		})
+
+		// setup a play function
+		function playExplosionSound(){
+			if( !soundBuffer )  return
+				var source  = context.createBufferSource()
+			source.buffer   = soundBuffer
+			source.connect(lineOut.destination)
+			source.start(0)
+			return source
+		}
+
+		
+		//////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////Spaceship - Singleton Pattern///////////////////////
+		//////////////////////////////////////////////////////////////////////////////////
+		
+		var spaceship	= null;
+		THREEx.SpaceShips.loadSpaceFighter02(function(object3d){
+			scene.add(object3d)
+			spaceship	= object3d
+			spaceship.rotateY(Math.PI/2)
+			spaceship.position.x    = -1
+			//spaceship.scale.set( 0.2, 0.2, 0.2 )	
+			this.spaceship.scale.set( 0.008, 0.008, 0.008)	
+		})
+
+		//////////////////////////////////////////////////////////////////////////////////
+		//////////////////////////////Spaceship - Singleton Pattern End///////////////////
+		//////////////////////////////////////////////////////////////////////////////////
+		
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////Spaceship - Decorator Pattern ////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	var dmgship = null;
+	var damageSpaceship = function(spaceship,damageAmt,object3d){
+		this.spaceship	= object3d
+		this.spaceship.name = "Falcon";
+		spaceship.rotateX(Math.PI/2)
+		this.spaceship.position.x = spaceship.position.x
+		this.spaceship.position.y = spaceship.position.y
+		this.spaceship.position.z = spaceship.position.z
+		spaceship.scale.set( 0.2, 0.2, 0.2 )		
+		dmgship = this.spaceship;
+		return this.spaceship;
+
+			/*
+			this.spaceship = spaceship;
+			this.spaceship.shield -= damageAmt;
+			return this.spaceship;
+			*/
+		}
+		
+		function createDamagedSpaceship(callback,spaceship,damageAmt){
+			THREEx.SpaceShips.loadSpaceFighter03(function(object3d){
+				callback(spaceship,damageAmt,object3d);
+			})
+		}
+		
+		function damageShip(spaceship,damageAmt,object3d){
+			scene.remove(spaceship);
+			spaceship = new damageSpaceship(spaceship,10,object3d);
+			scene.add(spaceship);
+		}
+		
+		function damageShield(){
+			createDamagedSpaceship(damageShip,spaceship,10);
+		}
+		
+		onRenderFcts.push(function(delta, now){
+			if(dmgship !== null){
+				scene.remove(spaceship)
+				spaceship = dmgship;
+				scene.add(spaceship)
+				spaceship.rotateY(Math.PI/2)
+				dmgship = null;
+			}
+		})
+		var bullet = null;
+
+		function checkBulletCollition(){
+			for(i=0; i<enemyList.length ; i++){
+				var distance    = bullet.position.distanceTo(enemyList[i].position)
+				if(distance < 0.5){
+					//scene.remove(enemyList[i]);
+					publisher.fire('publish',10); 
+					resetEnemy(enemyList[i])
+					playExplosionSound()
+					break;
+				}
+			}
+		}
+
+	///Fix this for the Bullets null value check !!	
+	function fireBullet(){
+		if(bullet === null){
+			playBlasterSound();
+			bullet = THREEx.SpaceShips.Shoot();
+			bullet.position.y = spaceship.position.y
+			bullet.position.x = spaceship.position.x + 1;
+			scene.add(bullet);
+			onRenderFcts.push(function(delta, now){
+					// move the moon to the left
+					if(bullet !== null){
+						bullet.position.x += 4 * delta;
+					// make it warp
+					checkBulletCollition();
+					if( bullet.position.x > 9.0 )  resetbullet();
+				}
+			})
+		}	
+	}
+
+	function resetbullet(){
+		if(bullet !== null){
+			scene.remove(bullet);
+			bullet = null;  
+		}
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////Spaceship - Decorator Pattern End/////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////controls by keyboard////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+		// create keyboard instance
+		var keyboard  = new THREEx.KeyboardState();
+
+		// add function in rendering loop
+		onRenderFcts.push(function(delta, now){
+			// only if the spaceship is loaded
+			if( spaceship === null ){
+				return;
+			}  
+			// set the speed
+			var speed = 2;
+			// only if spaceships is loaded
+			if( keyboard.pressed('down') ){
+				spaceship.position.y  -= speed * delta;
+			}else if( keyboard.pressed('up') ){
+				spaceship.position.y  += speed * delta;
+			}
+		})
+		
+	///////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////Camera Controls///////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	var mouse	= {x : 0, y : 0}
+	document.addEventListener('mousemove', function(event){
+		mouse.x	= (event.clientX / window.innerWidth ) - 0.5
+		mouse.y	= (event.clientY / window.innerHeight) - 0.5
+	}, false)
+	onRenderFcts.push(function(delta, now){
+		camera.position.x += (mouse.x*5 - camera.position.x) * (delta*3)
+		camera.position.y += (mouse.y*5 - camera.position.y) * (delta*3)
+		camera.lookAt( scene.position )
+	})
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////render the scene////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	onRenderFcts.push(function(){
+		renderer.render( scene, camera );		
+	})
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////LEAP Motion Controller//////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	function differentialNormalizer(leapPoint, iBox, isLeft, clamp)
+	{
+		var normalized = iBox.normalizePoint(leapPoint, false);
+		var offset = isLeft ? 0.25 : -0.25;
+		normalized.x += offset;
+
+			//clamp after offsetting
+			normalized.x = (clamp && normalized.x < 0) ? 0 : normalized.x;
+			normalized.x = (clamp && normalized.x > 1) ? 1 : normalized.x;
+			normalized.y = (clamp && normalized.y < 0) ? 0 : normalized.y;
+			normalized.y = (clamp && normalized.y > 1) ? 1 : normalized.y;
+
+			return normalized;
+		}
+
+		var leap = null;
+		if(!leap){
+			leap  = Leap.loop({enableGestures: true},function(frame){
+				if(frame.valid && frame.gestures.length > 0){
+					frame.gestures.forEach(function(gesture){
+						switch (gesture.type){
+							case "circle":
+							break;
+							case "keyTap":
+							fireBullet()
+							break;
+							case "screenTap":
+							break;
+							case "swipe":
+							break;
+						}
+					});
+				}
+
+				frame.hands.forEach(function(hand, index) {
+
+					if(index == 0 &&  spaceship != null ){
+						var appWidth =  window.innerWidth;
+						var appHeight =  window.innerHeight;
+						var sensitivity = 1.5;
+
+						var iBox = leap.frame().interactionBox;
+						var pointable = leap.frame().pointables[0];
+
+
+						var leapPoint = pointable.stabilizedTipPosition;
+						var normalizedPoint = iBox.normalizePoint(leapPoint, true);
+
+	    Leap.vec3.scale(normalizedPoint, normalizedPoint, sensitivity); //scale
+	    var center = sensitivity * .5 - .5;
+	    Leap.vec3.subtract(normalizedPoint, normalizedPoint, [center, center, center]); // re-center
+
+	    var appX = (normalizedPoint[0] * appWidth) - 350;
+	    var appY = (normalizedPoint[1] * appHeight) - 350;
+	    var speed = 1;
+
+	    spaceship.rotation.z = hand.roll()
+	    if(appX < 800){
+	    	spaceship.position.x  = appX/100;
+	    }
+	    if(appY < 400){
+	    	spaceship.position.y  = appY/100;
+	    }
+		// only if spaceships is loaded
+		renderer.render( scene, camera );			
+	}
+});
+})
+} 
+
+
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////Rendering Loop runner///////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	var lastTimeMsec= null
+	requestAnimationFrame(function animate(nowMsec){
+			// keep looping
+			requestAnimationFrame( animate );
+			// measure time
+			lastTimeMsec	= lastTimeMsec || nowMsec-1000/60
+			var deltaMsec	= Math.min(200, nowMsec - lastTimeMsec)
+			lastTimeMsec	= nowMsec
+			// call each update function
+			onRenderFcts.forEach(function(onRenderFct){
+				onRenderFct(deltaMsec/1000, nowMsec/1000)
+			})
+		})
+
+})
+</script>
+</body>

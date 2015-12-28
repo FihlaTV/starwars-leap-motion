@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<head>
+<script type="text/javascript">
+
+function zoomin(img)
+{
+	
+	 //img.style.height = "300px";
+    //img.style.width = "1200px";
+	img.style.opacity = "0.6";
+}
+function zoomout(img)
+{
+	
+	 //img.style.height = "200px";
+    //img.style.width = "1000px";
+	img.style.opacity = "1";
+}
+
+
+	var menu = {
+		//play button clicked
+			playGame : function(id)
+			{
+				console.log("inside playgame"+id);
+				location.href = "/SpaceshipMain.html";
+			},
+			
+			//instruction button clicked
+			instructions : function(id)
+			{
+				console.log("inside instructions"+id);
+				location.href = "/instructions.html";
+			},
+			
+			//quit button clicked
+			quitGame : function(id)
+			{
+				console.log("inside quitgame"+id);
+				 console.log("<Ctrl-C> received, shutting down server");
+				window.close();
+			}
+
+	}
+	
+	menu.execute = function ( name ) {
+	console.log("execute"+name);
+	console.log(menu[name] && menu[name].call( menu, name));
+	console.log("called menuitem");
+   // return menu[id] && menu[id].apply( menu, [].slice.call(arguments, 1) );
+	};
+</script>
+<style>
+body {
+    background: url('front_image.png') no-repeat fixed;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+}
+
+#container * {
+    -moz-box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+#play_button {
+	position: absolute;
+	left: 39%; 
+    top: 40%
+	right: 65%; 
+    bottom: 60%;
+	height: 200px;
+	width: 1100px;	
+}
+
+#instructions_button {
+	position: absolute;
+	left: 39%; 
+    top: 55%%;
+	right: 65%; 
+    bottom: 45%;
+	height: 100px;
+	height: 200px;
+	width: 1100px;
+}
+
+#quit_button {
+	position: absolute;
+	left: 39%; 
+    top: 59%;
+	right: 65%; 
+    bottom: 30%;
+	height: 200px;
+	width: 1100px;
+}
+
+#play_button {
+	font-family: verdana;
+	 -webkit-border-radius: 30;
+  -moz-border-radius: 30;
+  border-radius: 30px;
+  color: #ffffff;
+  font-size: 100px;
+  padding: 30px 30px 30px 30px;
+  border: solid #1f628d 6px;
+}
+
+#instructions_button {
+	font-family: verdana;
+	 -webkit-border-radius: 30;
+  -moz-border-radius: 30;
+  border-radius: 30px;
+  color: #ffffff;
+  font-size: 100px;
+  padding: 30px 30px 30px 30px;
+  border: solid #1f628d 6px;
+}
+
+#quit_button {
+	font-family: verdana;
+	 -webkit-border-radius: 30;
+  -moz-border-radius: 30;
+  border-radius: 30px;
+  color: #ffffff;
+  font-size: 100px;
+  padding: 30px 30px 30px 30px;
+  border: solid #1f628d 6px;
+}
+#img{
+	position: absolute;
+	left: 32%; 
+    top: 10%;
+	right: 65%; 
+    bottom: 30%;
+	height: 200px;
+	width: 1500px;
+	
+}
+
+</style>
+</head>
+<body>
+<div id="container">
+    <div id="play">
+	<img src="font.gif" id="img"/>
+	<button id="play_button" class="play_button" onclick="menu.execute('playGame');" style="background-image:url(button_image.jpg);" onmouseover="zoomin(this)" onmouseout="zoomout(this)"><img src="play.gif"/></button>
+	<button id="instructions_button" style="background-image:url(button_image.jpg);" onclick="menu.execute('instructions');"  onmouseover="zoomin(this)" onmouseout="zoomout(this)"><img src="instruction_text.gif"/></button>
+	<button id="quit_button" style="background-image:url(button_image.jpg);" onclick="menu.execute('quitGame');"  onmouseover="zoomin(this)" onmouseout="zoomout(this)"><img src="quit.gif"/></button>
+	</div>
+  </div>
+<body>
+
